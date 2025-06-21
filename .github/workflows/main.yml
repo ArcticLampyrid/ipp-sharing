@@ -1,0 +1,45 @@
+name: Release Windows EXE
+
+on:
+  push:
+    tags:
+      - 'v*'  # 仅当推送以 v 开头的标签时触发（如 v1.0.0）
+
+jobs:
+  build:
+    runs-on: windows-latest  # 使用 Windows 运行器
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: x86_64-pc-windows-msvc  # 指定 Windows 目标平台
+        override: true
+
+    - name: Build Release
+      run: cargo build --release --target x86_64-pc-windows-msvc
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # GitHub 自动注入的 Token
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false
+
+    - name: Upload EXE to Release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: target/x86_64-pc-windows-msvc/release/ipp-sharing.exe  # 替换为你的项目名
+        asset_name: ${{ github.ref_name }}.exe
+        asset_content_type: application/vnd.microsoft.portable-executable
