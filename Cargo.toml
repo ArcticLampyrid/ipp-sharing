@@ -9,17 +9,14 @@ default = ["pdfium"]
 winpdf = []
 pdfium = ["winprint/pdfium"]
 
-[patch.crates-io]
-bonjour-sys = { path = "../bonjour-sys" }
-
 [dependencies]
 anyhow = "1.0"
 bimap = "0.6"
 clap = { version = "4.5", features = ["derive"] }
 futures = "0.3"
-gethostname = "0.5"
+gethostname = "1"
 hyper = "1.5"
-ipp = "5.0"
+ipp = { version = "5", features = ["async"], default-features = false }
 ippper = { version = "0.4", default-features = false, features = [
     "server",
     "server-tls",
@@ -29,11 +26,11 @@ tokio = { version = "1", features = ["full"] }
 tokio-util = { version = "0.7", features = ["io", "compat"] }
 uuid = { version = "1.10", features = ["v4", "serde"] }
 winprint = { version = "0.2", default-features = false }
-zeroconf = "0.15"
+zeroconf = "0.15.1"
 blocking = "1.6"
-serde = "1.0"
+serde = { version = "1.0", features = ["derive"] }
 serde_yml = "0.0.12"
 log = "0.4"
-flexi_logger = "0.29"
+flexi_logger = "0.31"
 print_raster = "0.1"
 tiff = "0.9"
