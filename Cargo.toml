@@ -29,7 +29,7 @@ winprint = { version = "0.2", default-features = false }
 zeroconf = "0.15.1"
 blocking = "1.6"
 serde = { version = "1.0", features = ["derive"] }
-serde_yml = "0.0.12"
+serde_yaml_ng = "0.10"
 log = "0.4"
 flexi_logger = "0.31"
 print_raster = "0.1"

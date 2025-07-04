@@ -69,5 +69,5 @@ pub struct DeviceConfig {
 
 pub async fn read_config(path: impl AsRef<Path>) -> anyhow::Result<ConfigRoot> {
     let content = fs::read_to_string(path).await?;
-    Ok(serde_yml::from_str::<ConfigRoot>(content.as_str())?)
+    Ok(serde_yaml_ng::from_str::<ConfigRoot>(content.as_str())?)
 }
