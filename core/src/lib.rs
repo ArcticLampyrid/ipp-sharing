@@ -1,64 +1,30 @@
-use clap::Parser;
-use config::{read_config, OneOrMany};
+use crate::config::ConfigRoot;
+use config::OneOrMany;
 use gethostname::gethostname;
 use hyper::service::service_fn;
 use ipp_service::MyIppService;
 use ippper::handler::handle_ipp_via_http;
 use ippper::server::{serve_adaptive_https, serve_http, tls_config_from_reader};
 use log::{error, info};
-use std::env;
 use std::net::SocketAddr;
-use std::path::PathBuf;
-use std::str::FromStr;
 use std::sync::Arc;
 use tokio::fs;
 mod attr;
-mod config;
+pub mod config;
 mod dnssd;
 mod handler;
 mod ipp_service;
 mod print_options;
 mod raster;
 
-#[derive(Parser, Clone)]
-#[command(version, about, long_about = None)]
-struct Opts {
-    #[arg(short, long)]
-    config: Option<String>,
-}
-
-fn default_config_file_path() -> anyhow::Result<PathBuf> {
-    let mut path = env::current_exe()?;
-    path.pop();
-    path.push("config.yaml");
-    Ok(path)
-}
-
-async fn app_main() -> anyhow::Result<()> {
-    let opts: Opts = Opts::parse();
-
-    let config_path = match opts.config {
-        Some(path) => PathBuf::from_str(path.as_str())?,
-        None => default_config_file_path()
-            .map_err(|e| anyhow::anyhow!("failed to get default config file path: {}", e))?,
-    };
-    let config = read_config(config_path.as_path()).await.map_err(|e| {
-        anyhow::anyhow!(
-            "failed to read config file {}: {}",
-            config_path.display(),
-            e
-        )
-    })?;
-
-    info!("Config File: {}", config_path.display());
-
+pub async fn ipp_sharing(config: &ConfigRoot) -> anyhow::Result<()> {
     if config.devices.is_empty() {
         return Err(anyhow::anyhow!("no printer device found in config file"));
     }
 
     let mut ipp_services = Vec::new();
-    for device_config in config.devices {
-        match MyIppService::new(&config.server, &device_config) {
+    for device_config in config.devices.iter() {
+        match MyIppService::new(&config.server, device_config) {
             Ok(ipp_service) => {
                 info!(
                     "Sharing {} as {} (UUID={})",
@@ -134,13 +100,4 @@ async fn app_main() -> anyhow::Result<()> {
     }
 
     Ok(())
-}
-
-#[tokio::main]
-async fn main() {
-    flexi_logger::init();
-    if let Err(e) = app_main().await {
-        error!("Unhandled error: {}", e);
-        std::process::exit(100);
-    }
 }
