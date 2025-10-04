@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+    <defs>
+        <style>
+            .bg{fill:#0f172a}
+            .printer{fill:#e5e7eb}
+            .paper{fill:#ffffff}
+            .accent{fill:#38bdf8}
+            .line{fill:none;stroke:#0f172a;stroke-width:6;stroke-linecap:round;stroke-linejoin:round}
+        </style>
+    </defs>
+    <rect class="bg" x="2" y="2" width="124" height="124" rx="24" />
+    <rect class="paper" x="38" y="22" width="52" height="34" rx="4" />
+    <rect class="printer" x="20" y="50" width="88" height="50" rx="12" />
+    <path class="line" d="M34 78h60" />
+    <circle class="accent" cx="92" cy="30" r="6" />
+    <circle class="accent" cx="110" cy="46" r="6" />
+    <circle class="accent" cx="92" cy="62" r="6" />
+    <path class="accent" d="M92 30 L110 46 L92 62 Z" />
+</svg>

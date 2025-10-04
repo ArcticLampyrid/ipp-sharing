@@ -71,13 +71,14 @@ fn main() {
             error!("Application error: {}", e);
         }
     });
-
+    let icon = eframe::icon_data::from_png_bytes(include_bytes!("../../icons/app.png")).ok();
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_decorations(false)
             .with_maximized(true)
             .with_transparent(true)
-            .with_active(true),
+            .with_active(true)
+            .with_icon(icon.unwrap_or_default()),
 
         ..Default::default()
     };
