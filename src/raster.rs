@@ -14,8 +14,8 @@ use std::{path::Path, pin::pin};
 use tiff::{
     encoder::{
         colortype::{Gray8, RGB8},
-        compression::{Deflate, DeflateLevel},
-        Rational, TiffEncoder,
+        compression::DeflateLevel,
+        Compression, Rational, TiffEncoder,
     },
     tags::ResolutionUnit,
 };
@@ -41,15 +41,12 @@ fn new_tiff_encode_task(
     let tiff_file = std::fs::File::create(tiff_path)?;
     let (tx, mut rx) = mpsc::channel::<OwnedPage>(3);
     let tiff_encode_task = blocking::unblock(move || {
-        let mut encoder = TiffEncoder::new(tiff_file)?;
+        let mut encoder = TiffEncoder::new(tiff_file)?
+            .with_compression(Compression::Deflate(DeflateLevel::Balanced));
         while let Some(page) = rx.blocking_recv() {
             match page.format {
                 ContentFormat::Gray8 => {
-                    let mut image = encoder.new_image_with_compression::<Gray8, Deflate>(
-                        page.width,
-                        page.height,
-                        Deflate::with_level(DeflateLevel::Balanced),
-                    )?;
+                    let mut image = encoder.new_image::<Gray8>(page.width, page.height)?;
                     image.resolution_unit(ResolutionUnit::Inch);
                     image.x_resolution(Rational {
                         n: page.dpi_x,
@@ -62,11 +59,7 @@ fn new_tiff_encode_task(
                     image.write_data(&page.content)?;
                 }
                 ContentFormat::RGB8 => {
-                    let mut image = encoder.new_image_with_compression::<RGB8, Deflate>(
-                        page.width,
-                        page.height,
-                        Deflate::with_level(DeflateLevel::Balanced),
-                    )?;
+                    let mut image = encoder.new_image::<RGB8>(page.width, page.height)?;
                     image.resolution_unit(ResolutionUnit::Inch);
                     image.x_resolution(Rational {
                         n: page.dpi_x,

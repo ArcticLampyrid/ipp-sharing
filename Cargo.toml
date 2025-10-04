@@ -15,7 +15,7 @@ bimap = "0.6"
 clap = { version = "4.5", features = ["derive"] }
 futures = "0.3"
 gethostname = "1"
-hyper = "1.5"
+hyper = "1.7"
 ipp = { version = "5", features = ["async"], default-features = false }
 ippper = { version = "0.4", default-features = false, features = [
     "server",
@@ -33,4 +33,4 @@ serde_yaml_ng = "0.10"
 log = "0.4"
 flexi_logger = "0.31"
 print_raster = "0.1"
-tiff = "0.9"
+tiff = "0.10"

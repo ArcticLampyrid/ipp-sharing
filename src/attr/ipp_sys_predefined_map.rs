@@ -27,6 +27,6 @@ pub trait IppSysPredefinedMap {
     {
         let map = Self::bimap();
         let predefined = map.get_by_left(ipp_key)?;
-        packs.find(|x| x.as_predefined_name().map_or(false, |x| &x == predefined))
+        packs.find(|x| x.as_predefined_name().is_some_and(|x| &x == predefined))
     }
 }
