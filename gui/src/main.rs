@@ -1,7 +1,7 @@
 #![windows_subsystem = "windows"]
 
 use clap::Parser;
-use eframe::egui::{self, vec2, Align, Style, ViewportCommand, Visuals};
+use eframe::egui::{self, vec2, Align, ViewportCommand};
 use egui::RichText;
 use egui::{Align2, UiBuilder};
 use ipp_sharing_core::config::read_config;
@@ -86,11 +86,7 @@ fn main() {
         "IPP Sharing",
         options,
         Box::new(|cc| {
-            let style = Style {
-                visuals: Visuals::dark(),
-                ..Style::default()
-            };
-            cc.egui_ctx.set_style(style);
+            cc.egui_ctx.set_theme(egui::Theme::Dark);
             setup_fonts(&cc.egui_ctx);
             Ok(Box::new(MyApp::default()))
         }),
