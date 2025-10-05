@@ -132,7 +132,7 @@ impl SimpleIppServiceHandler for MyHandler {
             #[allow(clippy::never_loop)]
             let r = loop {
                 if let Err(err) = io::copy(&mut payload, &mut file).await {
-                    error!("Failed to save document as file: {}", err);
+                    error!("Failed to save document as file: {:#}", err);
                     break Err(err.into());
                 }
                 if let Err(err) = blocking::unblock({
@@ -141,7 +141,7 @@ impl SimpleIppServiceHandler for MyHandler {
                 })
                 .await
                 {
-                    error!("Failed to print document: {}", err);
+                    error!("Failed to print document: {:#}", err);
                     break Err(err);
                 }
                 break Ok(());
@@ -154,7 +154,7 @@ impl SimpleIppServiceHandler for MyHandler {
             #[allow(clippy::never_loop)]
             let r = loop {
                 if let Err(err) = io::copy(&mut payload, &mut file).await {
-                    error!("Failed to save document as file: {}", err);
+                    error!("Failed to save document as file: {:#}", err);
                     break Err(err.into());
                 }
                 if let Err(err) = blocking::unblock({
@@ -163,7 +163,7 @@ impl SimpleIppServiceHandler for MyHandler {
                 })
                 .await
                 {
-                    error!("Failed to print document: {}", err);
+                    error!("Failed to print document: {:#}", err);
                     break Err(err);
                 }
                 break Ok(());
@@ -177,7 +177,7 @@ impl SimpleIppServiceHandler for MyHandler {
                 if let Err(err) =
                     urf_to_tiff(BufReader::with_capacity(RASTER_BUF_SIZE, payload), &path).await
                 {
-                    error!("Failed to save document as file: {}", err);
+                    error!("Failed to save document as file: {:#}", err);
                     break Err(err);
                 }
                 if let Err(err) = blocking::unblock({
@@ -186,7 +186,7 @@ impl SimpleIppServiceHandler for MyHandler {
                 })
                 .await
                 {
-                    error!("Failed to print document: {}", err);
+                    error!("Failed to print document: {:#}", err);
                     break Err(err);
                 }
                 break Ok(());
@@ -207,7 +207,7 @@ impl SimpleIppServiceHandler for MyHandler {
                     cups_raster_to_tiff(BufReader::with_capacity(RASTER_BUF_SIZE, payload), &path)
                         .await
                 {
-                    error!("Failed to save document as file: {}", err);
+                    error!("Failed to save document as file: {:#}", err);
                     break Err(err);
                 }
                 if let Err(err) = blocking::unblock({
@@ -216,7 +216,7 @@ impl SimpleIppServiceHandler for MyHandler {
                 })
                 .await
                 {
-                    error!("Failed to print document: {}", err);
+                    error!("Failed to print document: {:#}", err);
                     break Err(err);
                 }
                 break Ok(());
