@@ -88,7 +88,7 @@ fn main() {
         Box::new(|cc| {
             cc.egui_ctx.set_theme(egui::Theme::Dark);
             setup_fonts(&cc.egui_ctx);
-            Ok(Box::new(MyApp::default()))
+            Ok(Box::new(MyApp::new()))
         }),
     )
     .unwrap();
@@ -117,13 +117,23 @@ fn setup_fonts(ctx: &egui::Context) {
     ctx.set_fonts(fonts);
 }
 
-#[derive(Default)]
 struct MyApp {
     close_confirm_open: bool,
+    start_time: std::time::Instant,
+}
+
+impl MyApp {
+    fn new() -> Self {
+        Self {
+            close_confirm_open: false,
+            start_time: std::time::Instant::now(),
+        }
+    }
 }
 
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        ctx.request_repaint_after(Duration::from_secs(1));
         egui::CentralPanel::default().show(ctx, |ui| {
             let app_rect = ui.max_rect();
             let heading_rect = {
@@ -139,7 +149,13 @@ impl eframe::App for MyApp {
                     ui.spacing_mut().item_spacing.x = 0.0;
                     ui.heading(format!("IPP Sharing {}", env!("CARGO_PKG_VERSION")));
                     ui.add_space(8.0);
-
+                    ui.label(format!(
+                        "Uptime: {}",
+                        humantime::format_duration(Duration::from_secs(
+                            self.start_time.elapsed().as_secs()
+                        ))
+                    ));
+                    ui.label(" | ");
                     ui.label("License: AGPLv3");
                     ui.label(" | ");
                     ui.hyperlink_to(

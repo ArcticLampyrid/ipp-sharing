@@ -12,3 +12,4 @@ ipp-sharing-core = { path = "../core" }
 tokio = { version = "1", features = ["full"] }
 eframe = "0.32"
 egui_logger = "0.8"
+humantime = "2.3.0"
