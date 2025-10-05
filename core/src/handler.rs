@@ -135,6 +135,7 @@ impl SimpleIppServiceHandler for MyHandler {
                     error!("Failed to save document as file: {:#}", err);
                     break Err(err.into());
                 }
+                drop(file);
                 if let Err(err) = blocking::unblock({
                     let path = path.clone();
                     move || Self::handle_pdf(target, &path, options)
@@ -157,6 +158,7 @@ impl SimpleIppServiceHandler for MyHandler {
                     error!("Failed to save document as file: {:#}", err);
                     break Err(err.into());
                 }
+                drop(file);
                 if let Err(err) = blocking::unblock({
                     let path = path.clone();
                     move || Self::handle_xps(target, &path, options)
