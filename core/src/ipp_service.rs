@@ -8,6 +8,7 @@ use crate::config::{DeviceConfig, OneOrMany, ServerConfig};
 use crate::dnssd::serve_dnssd;
 use crate::handler::MyHandler;
 use gethostname::gethostname;
+use ipp::value::{IppKeyword, IppMimeMediaType};
 use ippper::service::simple::{PrinterInfoBuilder, SimpleIppService};
 use std::sync::Arc;
 use winprint::printer::PrinterDevice;
@@ -33,33 +34,40 @@ impl MyIppService {
         let capabilities = PrintCapabilities::fetch(&device)?;
 
         let mut info = PrinterInfoBuilder::default();
-        let mut format_supported = vec!["application/octet-stream".to_string()];
+        let mut format_supported: Vec<IppMimeMediaType> =
+            vec!["application/octet-stream".try_into()?];
         if cfg!(any(feature = "winpdf", feature = "pdfium")) {
-            format_supported.push("application/pdf".to_string());
+            format_supported.push("application/pdf".try_into()?);
         }
-        format_supported.push("application/vnd.ms-xpsdocument".to_string());
-        format_supported.push("image/pwg-raster".to_string());
-        format_supported.push("image/urf".to_string());
+        format_supported.push("application/vnd.ms-xpsdocument".try_into()?);
+        format_supported.push("image/pwg-raster".try_into()?);
+        format_supported.push("image/urf".try_into()?);
         let format_preferred = if format_supported.len() > 1 {
             Some(format_supported[1].clone())
         } else {
             None
         };
-        info.name(device_config.name.clone())
-            .info(Some(device_config.info.clone()))
-            .make_and_model(Some(device_config.make_and_model.clone()))
+        info.name(device_config.name.clone().try_into()?)
+            .info(Some(device_config.info.clone().try_into()?))
+            .make_and_model(Some(device_config.make_and_model.clone().try_into()?))
+            .document_format_default(format_supported[0].clone())
             .document_format_supported(format_supported)
-            .document_format_default("application/octet-stream".to_string())
             .document_format_preferred(format_preferred)
             .uuid(Some(device_config.uuid));
 
         if device_config.dnssd {
-            info.dnssd_name(Some(device_config.name.clone()));
+            info.dnssd_name(Some(device_config.name.clone().try_into()?));
         }
 
-        let media_supported = all_supported_media(capabilities.page_media_sizes());
-        if media_supported.iter().any(|x| x == "iso_a4_210x297mm") {
-            info.media_default("iso_a4_210x297mm".to_string());
+        let media_supported = all_supported_media(capabilities.page_media_sizes())
+            .iter()
+            .filter_map(|x| IppKeyword::new(x).ok())
+            .collect::<Vec<IppKeyword>>();
+        if media_supported
+            .iter()
+            .any(|x| x.as_str() == "iso_a4_210x297mm")
+        {
+            info.media_default("iso_a4_210x297mm".try_into()?);
         } else if !media_supported.is_empty() {
             info.media_default(media_supported[0].clone());
         }
@@ -74,13 +82,13 @@ impl MyIppService {
         let color_supported =
             PrintColorMap::all_supported_by_win(capabilities.page_output_colors())
                 .into_iter()
-                .map(|x| x.to_string())
-                .collect::<Vec<String>>();
-        let color = color_supported.iter().any(|x| x == "color");
+                .filter_map(|x| IppKeyword::new(x).ok())
+                .collect::<Vec<IppKeyword>>();
+        let color = color_supported.iter().any(|x| x.as_str() == "color");
         info.color_supported(color);
-        if color_supported.iter().any(|x| x == "grayscale") {
+        if color_supported.iter().any(|x| x.as_str() == "grayscale") {
             // For environmental friendliness, grayscale mode is used by default.
-            info.print_color_mode_default("grayscale".to_string());
+            info.print_color_mode_default("grayscale".try_into()?);
             info.print_color_mode_supported(color_supported);
         } else if !color_supported.is_empty() {
             info.print_color_mode_default(color_supported[0].clone());
@@ -89,10 +97,10 @@ impl MyIppService {
 
         let mut sides_supported = JobSidesMap::all_supported_by_win(capabilities.duplexes())
             .into_iter()
-            .map(|x| x.to_string())
-            .collect::<Vec<String>>();
+            .filter_map(|x| IppKeyword::new(x).ok())
+            .collect::<Vec<IppKeyword>>();
         if sides_supported.is_empty() {
-            sides_supported.push("one-sided".to_string());
+            sides_supported.push("one-sided".try_into()?);
         }
         info.sides_supported(sides_supported);
 
@@ -103,9 +111,10 @@ impl MyIppService {
         }
 
         info.urf_supported({
-            let mut r = vec!["V1.4".to_string(), "CP1".to_string(), "W8".to_string()];
+            let mut r: Vec<IppKeyword> =
+                vec!["V1.4".try_into()?, "CP1".try_into()?, "W8".try_into()?];
             if color {
-                r.push("SRGB24".to_string());
+                r.push("SRGB24".try_into()?);
             }
             let mut urf_resolution = resolution_supported
                 .iter()
@@ -113,24 +122,27 @@ impl MyIppService {
                 .collect::<Vec<_>>();
             urf_resolution.sort_unstable();
             urf_resolution.dedup();
-            r.push(format!(
-                "RS{}",
-                urf_resolution
-                    .into_iter()
-                    .map(|x| x.to_string())
-                    .collect::<Vec<_>>()
-                    .join("-")
-            ));
-            r.push("DM1".to_string());
+            r.push(
+                format!(
+                    "RS{}",
+                    urf_resolution
+                        .into_iter()
+                        .map(|x| x.to_string())
+                        .collect::<Vec<_>>()
+                        .join("-")
+                )
+                .try_into()?,
+            );
+            r.push("DM1".try_into()?);
             r
         });
 
         info.pwg_raster_document_resolution_supported(resolution_supported);
-        info.pwg_raster_document_sheet_back(Some("normal".to_string()));
+        info.pwg_raster_document_sheet_back(Some("normal".try_into()?));
         info.pwg_raster_document_type_supported({
-            let mut r = vec!["sgray_8".to_string()];
+            let mut r: Vec<IppKeyword> = vec!["sgray_8".try_into()?];
             if color {
-                r.push("srgb_8".to_string());
+                r.push("srgb_8".try_into()?);
             }
             r
         });

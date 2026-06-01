@@ -4,6 +4,9 @@ use clap::Parser;
 use eframe::egui::{self, vec2, Align, ViewportCommand};
 use egui::RichText;
 use egui::{Align2, UiBuilder};
+use egui_tracing::tracing_subscriber;
+use egui_tracing::tracing_subscriber::layer::SubscriberExt;
+use egui_tracing::tracing_subscriber::util::SubscriberInitExt;
 use ipp_sharing_core::config::read_config;
 use ipp_sharing_core::ipp_sharing;
 use log::{error, info};
@@ -57,9 +60,12 @@ async fn app_main() -> anyhow::Result<()> {
 }
 
 fn main() {
-    egui_logger::builder()
-        .init()
-        .expect("Error initializing logger");
+    let collector = egui_tracing::EventCollector::default()
+        .with_max_events(Some(1000))
+        .with_max_level(tracing::Level::INFO);
+    tracing_subscriber::registry()
+        .with(collector.clone())
+        .init();
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -88,7 +94,7 @@ fn main() {
         Box::new(|cc| {
             cc.egui_ctx.set_theme(egui::Theme::Dark);
             setup_fonts(&cc.egui_ctx);
-            Ok(Box::new(MyApp::new()))
+            Ok(Box::new(MyApp::new(collector)))
         }),
     )
     .unwrap();
@@ -120,21 +126,23 @@ fn setup_fonts(ctx: &egui::Context) {
 struct MyApp {
     close_confirm_open: bool,
     start_time: std::time::Instant,
+    collector: egui_tracing::EventCollector,
 }
 
 impl MyApp {
-    fn new() -> Self {
+    fn new(collector: egui_tracing::EventCollector) -> Self {
         Self {
             close_confirm_open: false,
             start_time: std::time::Instant::now(),
+            collector,
         }
     }
 }
 
 impl eframe::App for MyApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        ctx.request_repaint_after(Duration::from_secs(1));
-        egui::CentralPanel::default().show(ctx, |ui| {
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        ui.request_repaint_after(Duration::from_secs(1));
+        egui::CentralPanel::default().show_inside(ui, |ui| {
             let app_rect = ui.max_rect();
             let heading_rect = {
                 let mut rect = app_rect;
@@ -183,7 +191,7 @@ impl eframe::App for MyApp {
                 .collapsible(false)
                 .fixed_size(vec2(300.0, 100.0))
                 .anchor(Align2::CENTER_CENTER, vec2(0.0, 0.0))
-                .show(ctx, |ui| {
+                .show(ui, |ui| {
                     ui.label("Are you sure you want to close?");
                     ui.with_layout(egui::Layout::right_to_left(Align::Min), |ui| {
                         if ui.button("Confirm").clicked() {
@@ -191,7 +199,7 @@ impl eframe::App for MyApp {
                         }
                     });
                 });
-            egui_logger::LoggerUi::default().show(ui);
+            ui.add(egui_tracing::Logs::new(self.collector.clone()));
         });
     }
 }
