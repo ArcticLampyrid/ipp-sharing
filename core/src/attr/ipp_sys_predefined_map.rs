@@ -9,6 +9,22 @@ pub trait IppSysPredefinedMap {
 
     fn bimap() -> &'static bimap::BiHashMap<Self::IppKey, Self::SysPredefined>;
 
+    fn ipp_to_sys<Q>(ipp_key: &Q) -> Option<&'static Self::SysPredefined>
+    where
+        Self::IppKey: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
+        Self::bimap().get_by_left(ipp_key)
+    }
+
+    fn sys_to_ipp<Q>(sys_predefined: &Q) -> Option<&'static Self::IppKey>
+    where
+        Self::SysPredefined: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
+        Self::bimap().get_by_right(sys_predefined)
+    }
+
     fn all_supported_by_win(packs: impl Iterator<Item = Self::SysOptionPack>) -> Vec<Self::IppKey> {
         let map = Self::bimap();
         packs
@@ -25,8 +41,7 @@ pub trait IppSysPredefinedMap {
         Self::IppKey: Borrow<Q>,
         Q: Eq + Hash + ?Sized,
     {
-        let map = Self::bimap();
-        let predefined = map.get_by_left(ipp_key)?;
+        let predefined = Self::ipp_to_sys(ipp_key)?;
         packs.find(|x| x.as_predefined_name().is_some_and(|x| &x == predefined))
     }
 }

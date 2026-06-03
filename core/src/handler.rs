@@ -1,5 +1,6 @@
 use crate::attr::ipp_sys_predefined_map::IppSysPredefinedMap;
-use crate::attr::media::get_media_by_ipp;
+use crate::attr::media_name::CommonMediaNameMap;
+use crate::attr::media_size::media_size_sys_to_ipp;
 use crate::attr::orientation::OrientationMap;
 use crate::attr::print_color_mode::PrintColorMap;
 use crate::attr::printer_resolution::get_resolution_by_ipp;
@@ -10,6 +11,7 @@ use anyhow::Ok;
 use futures::io::{self, BufReader};
 use futures::AsyncReadExt;
 use ippper::error::IppError;
+use ippper::model::MediaInfo;
 use ippper::service::simple::{SimpleIppDocument, SimpleIppServiceHandler};
 use log::{error, info};
 use std::env;
@@ -19,7 +21,7 @@ use tokio::fs::File;
 use tokio_util::compat::*;
 use uuid::Uuid;
 use winprint::printer::{FilePrinter, ImagePrinter, PrinterDevice, XpsPrinter};
-use winprint::ticket::PrintCapabilities;
+use winprint::ticket::{FeatureOptionPackWithPredefined, PageMediaSize, PrintCapabilities};
 
 pub struct MyHandler {
     target: PrinterDevice,
@@ -84,6 +86,38 @@ impl MyHandler {
 
 const RASTER_BUF_SIZE: usize = 1024 * 1024;
 
+fn decide_media_size(
+    ipp_media_info: &MediaInfo,
+    media_packs: &[PageMediaSize],
+) -> Option<PageMediaSize> {
+    if let Some(media_size) = ipp_media_info.size {
+        // Try to find a media with the same size in capabilities.
+        media_packs
+            .iter()
+            .min_by_key(|x| {
+                let actual_size = media_size_sys_to_ipp(x.size());
+                let x_abs_diff = media_size.x_dimension.abs_diff(actual_size.x_dimension);
+                let y_abs_diff = media_size.y_dimension.abs_diff(actual_size.y_dimension);
+                let x_abs_diff_squared = x_abs_diff as u64 * x_abs_diff as u64;
+                let y_abs_diff_squared = y_abs_diff as u64 * y_abs_diff as u64;
+                x_abs_diff_squared.saturating_add(y_abs_diff_squared)
+            })
+            .cloned()
+    } else if let Some(ipp_key) = ipp_media_info.name.as_deref() {
+        let sys_name = CommonMediaNameMap::ipp_to_sys(ipp_key)?;
+        media_packs
+            .iter()
+            .find(|x| {
+                x.as_predefined_name()
+                    .as_ref()
+                    .is_some_and(|x| x == sys_name)
+            })
+            .cloned()
+    } else {
+        None
+    }
+}
+
 impl SimpleIppServiceHandler for MyHandler {
     async fn handle_document(&self, document: SimpleIppDocument) -> anyhow::Result<()> {
         info!(
@@ -91,9 +125,12 @@ impl SimpleIppServiceHandler for MyHandler {
             document.job_attributes.originating_user_name
         );
 
-        let media = get_media_by_ipp(
-            self.capabilities.page_media_sizes(),
-            document.job_attributes.media.as_str(),
+        let media: Option<PageMediaSize> = decide_media_size(
+            &document.job_attributes.media,
+            self.capabilities
+                .page_media_sizes()
+                .collect::<Vec<_>>()
+                .as_slice(),
         );
         let orientation = document
             .job_attributes

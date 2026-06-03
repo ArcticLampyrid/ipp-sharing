@@ -1,5 +1,6 @@
 use crate::attr::ipp_sys_predefined_map::IppSysPredefinedMap;
-use crate::attr::media::all_supported_media;
+use crate::attr::media_name::CommonMediaNameMap;
+use crate::attr::media_size::media_size_sys_to_ipp;
 use crate::attr::orientation::OrientationMap;
 use crate::attr::print_color_mode::PrintColorMap;
 use crate::attr::printer_resolution::all_supported_resolution_by_win;
@@ -9,10 +10,11 @@ use crate::dnssd::serve_dnssd;
 use crate::handler::MyHandler;
 use gethostname::gethostname;
 use ipp::value::{IppKeyword, IppMimeMediaType};
+use ippper::model::MediaInfo;
 use ippper::service::simple::{PrinterInfoBuilder, SimpleIppService};
 use std::sync::Arc;
 use winprint::printer::PrinterDevice;
-use winprint::ticket::PrintCapabilities;
+use winprint::ticket::{FeatureOptionPackWithPredefined, PrintCapabilities};
 
 pub struct MyIppService {
     pub inner: Arc<SimpleIppService<MyHandler>>,
@@ -59,19 +61,40 @@ impl MyIppService {
             info.dnssd_name(Some(device_config.name.clone().try_into()?));
         }
 
-        let media_supported = all_supported_media(capabilities.page_media_sizes())
+        let media_supported = capabilities
+            .page_media_sizes()
+            .filter_map(|x| {
+                let sys_size = x.size();
+                let ipp_size = media_size_sys_to_ipp(sys_size);
+                x.as_predefined_name()
+                    .and_then(|sys_name| CommonMediaNameMap::sys_to_ipp(&sys_name))
+                    .and_then(|ipp_key| IppKeyword::new(*ipp_key).ok())
+                    .map(|ipp_key| MediaInfo {
+                        name: Some(ipp_key),
+                        size: Some(ipp_size),
+                        margins: Some((0, 0, 0, 0)),
+                        source: Some("auto".try_into().unwrap()),
+                        ..Default::default()
+                    })
+            })
+            .collect::<Vec<MediaInfo>>();
+        if let Some(default_media_info) = media_supported
             .iter()
-            .filter_map(|x| IppKeyword::new(x).ok())
-            .collect::<Vec<IppKeyword>>();
-        if media_supported
-            .iter()
-            .any(|x| x.as_str() == "iso_a4_210x297mm")
+            .find(|x| x.name.as_deref() == Some("iso_a4_210x297mm"))
         {
-            info.media_default("iso_a4_210x297mm".try_into()?);
+            info.media_default(default_media_info.clone());
         } else if !media_supported.is_empty() {
             info.media_default(media_supported[0].clone());
         }
         info.media_supported(media_supported);
+        info.media_col_supported(vec![
+            "media-size".try_into().unwrap(),
+            "media-top-margin".try_into().unwrap(),
+            "media-right-margin".try_into().unwrap(),
+            "media-bottom-margin".try_into().unwrap(),
+            "media-left-margin".try_into().unwrap(),
+            "media-source".try_into().unwrap(),
+        ]);
 
         let orientation_supported =
             OrientationMap::all_supported_by_win(capabilities.page_orientations());

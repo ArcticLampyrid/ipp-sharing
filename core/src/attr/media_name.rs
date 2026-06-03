@@ -179,9 +179,9 @@ const COMMON_MEDIA_PAIR: &[(&str, PredefinedMediaName)] = &[
     ("prc_8_120x309mm", PredefinedMediaName::PRC8Envelope),
 ];
 
-struct CommonMediaMap {}
+pub struct CommonMediaNameMap {}
 
-impl IppSysPredefinedMap for CommonMediaMap {
+impl IppSysPredefinedMap for CommonMediaNameMap {
     type IppKey = &'static str;
     type SysPredefined = PredefinedMediaName;
     type SysOptionPack = PageMediaSize;
@@ -190,18 +190,4 @@ impl IppSysPredefinedMap for CommonMediaMap {
         static BIMAP: OnceLock<bimap::BiHashMap<&str, PredefinedMediaName>> = OnceLock::new();
         BIMAP.get_or_init(|| bimap::BiHashMap::from_iter(COMMON_MEDIA_PAIR.iter().copied()))
     }
-}
-
-pub fn all_supported_media(packs: impl Iterator<Item = PageMediaSize>) -> Vec<String> {
-    CommonMediaMap::all_supported_by_win(packs)
-        .iter()
-        .map(|x| x.to_string())
-        .collect()
-}
-
-pub fn get_media_by_ipp(
-    packs: impl Iterator<Item = PageMediaSize>,
-    ipp_key: &str,
-) -> Option<PageMediaSize> {
-    CommonMediaMap::find_by_ipp(packs, ipp_key)
 }

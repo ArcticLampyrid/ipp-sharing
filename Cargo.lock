@@ -2675,9 +2675,9 @@ dependencies = [
 
 [[package]]
 name = "ippper"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7147e7422429f70c035235904b9aa20e1b946a753c19a4f8e189cd63e249039d"
+checksum = "39f50e32ccf819768dfb0d62de59cda617ed7aacc7bdf58eca9780f64306b07f"
 dependencies = [
  "anyhow",
  "async-compression",
