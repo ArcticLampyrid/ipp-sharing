@@ -11,10 +11,11 @@ use anyhow::Ok;
 use futures::io::{self, BufReader};
 use futures::AsyncReadExt;
 use ippper::error::IppError;
-use ippper::model::MediaInfo;
+use ippper::model::{MediaInfo, PageOrientation};
 use ippper::service::simple::{SimpleIppDocument, SimpleIppServiceHandler};
-use log::{error, info};
+use log::{error, info, log_enabled, Level};
 use std::env;
+use std::fmt::Write;
 use std::path::Path;
 use tokio::fs;
 use tokio::fs::File;
@@ -120,10 +121,57 @@ fn decide_media_size(
 
 impl SimpleIppServiceHandler for MyHandler {
     async fn handle_document(&self, document: SimpleIppDocument) -> anyhow::Result<()> {
-        info!(
-            "Receiving document from user: {}",
-            document.job_attributes.originating_user_name
-        );
+        if log_enabled!(Level::Info) {
+            let mut info_str = format!(
+                "Received document from user: {}",
+                document.job_attributes.originating_user_name
+            );
+            if let Some(media_size) = &document.job_attributes.media.size {
+                write!(
+                    info_str,
+                    ", media size: {:.3}x{:.3}cm",
+                    media_size.x_dimension as f64 / 1000.0,
+                    media_size.y_dimension as f64 / 1000.0
+                )
+                .unwrap();
+            } else if let Some(media_name) = &document.job_attributes.media.name {
+                write!(info_str, ", media name: {}", media_name.as_str()).unwrap();
+            }
+            if let Some(orientation) = &document.job_attributes.orientation {
+                write!(
+                    info_str,
+                    ", orientation: {}",
+                    match orientation {
+                        PageOrientation::Portrait => "portrait",
+                        PageOrientation::Landscape => "landscape",
+                        PageOrientation::ReversePortrait => "portrait (reversed)",
+                        PageOrientation::ReverseLandscape => "landscape (reversed)",
+                    }
+                )
+                .unwrap();
+            }
+            write!(
+                info_str,
+                ", color mode: {}",
+                document.job_attributes.print_color_mode
+            )
+            .unwrap();
+            write!(info_str, ", sides: {}", document.job_attributes.sides).unwrap();
+            if let Some(resolution) = &document.job_attributes.printer_resolution {
+                write!(info_str, ", resolution: {}", resolution.cross_feed).unwrap();
+                if resolution.feed != resolution.cross_feed {
+                    write!(info_str, "x{}", resolution.feed).unwrap();
+                }
+                if resolution.units == 3 {
+                    // dpi
+                    write!(info_str, "dpi").unwrap();
+                } else if resolution.units == 4 {
+                    // dpcm
+                    write!(info_str, "dpcm").unwrap();
+                }
+            }
+            info!("{}", info_str);
+        }
 
         let media: Option<PageMediaSize> = decide_media_size(
             &document.job_attributes.media,
