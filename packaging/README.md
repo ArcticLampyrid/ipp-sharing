@@ -1,7 +1,7 @@
 # IPP Sharing @VERSION@ (Windows @ARCHITECTURE@)
 
-This is a portable build of IPP Sharing. Extract the zip to a folder and keep
-all files together.
+This is a portable build of IPP Sharing. Extract the 7z file to a folder and
+keep all files together.
 
 ## First run
 

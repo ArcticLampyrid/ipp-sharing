@@ -15,7 +15,7 @@ This is a Windows-only tool, of course. For Linux and macOS users, CUPS (Common 
 ### Portable Windows packages
 
 The **Package Windows** GitHub Actions workflow produces separate `x86` and
-`x64` portable zip packages as workflow artifacts. Each package contains the
+`x64` portable 7z packages as workflow artifacts. Each package contains the
 CLI, GUI, `pdfium.dll`, a matching Bonjour MSI, and a short setup guide. The
 Bonjour MSI is provided for manual installation; it is not installed by IPP
 Sharing.

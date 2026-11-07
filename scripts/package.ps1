@@ -24,6 +24,20 @@ $releaseDirectory = Join-Path $root "target\$Target\release"
 $buildDirectory = Join-Path $releaseDirectory "build"
 $packageName = "ipp-sharing-windows-$Architecture"
 $packageDirectory = Join-Path $OutputDirectory $packageName
+$sevenZipCommand = Get-Command 7z.exe -ErrorAction SilentlyContinue
+$sevenZipPath = $null
+if ($null -ne $sevenZipCommand) {
+    $sevenZipPath = $sevenZipCommand.Source
+}
+if ([string]::IsNullOrWhiteSpace($sevenZipPath)) {
+    $sevenZipPath = @(
+        (Join-Path ${env:ProgramFiles} "7-Zip\7z.exe"),
+        (Join-Path ${env:ProgramFiles(x86)} "7-Zip\7z.exe")
+    ) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+}
+if ([string]::IsNullOrWhiteSpace($sevenZipPath)) {
+    throw "7-Zip was not found. Install 7-Zip and make 7z.exe available on PATH."
+}
 
 if (-not (Test-Path -LiteralPath (Join-Path $releaseDirectory "ipp-sharing.exe"))) {
     throw "The CLI binary was not found in $releaseDirectory."
@@ -70,10 +84,19 @@ $checksums = Get-ChildItem -LiteralPath $packageDirectory -File |
     }
 Set-Content -LiteralPath (Join-Path $packageDirectory "SHA256SUMS.txt") -Value $checksums -Encoding ascii
 
-$archive = Join-Path $OutputDirectory "$packageName-$version.zip"
+$archive = Join-Path $OutputDirectory "$packageName-$version.7z"
 if (Test-Path -LiteralPath $archive) {
     Remove-Item -LiteralPath $archive -Force
 }
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
-Compress-Archive -Path (Join-Path $packageDirectory "*") -DestinationPath $archive -CompressionLevel Optimal
+Push-Location $packageDirectory
+try {
+    & $sevenZipPath a -t7z -ms=on -mmt=on -mx=9 $archive "*"
+    if ($LASTEXITCODE -ne 0) {
+        throw "7-Zip failed with exit code $LASTEXITCODE."
+    }
+}
+finally {
+    Pop-Location
+}
 Write-Host "Created $archive"
