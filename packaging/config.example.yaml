@@ -1,0 +1,15 @@
+server:
+  addr:
+    - "0.0.0.0:631"
+    - "[::]:631"
+  host: null
+  tls: null
+
+devices:
+  - name: "Print To PDF (IPP Sharing)"
+    info: "Print To PDF (IPP Sharing)"
+    target: "Microsoft Print to PDF"
+    # Generate a new UUID for each shared printer.
+    uuid: "b27599fd-800c-409e-afe9-6dbbe11689ac"
+    basepath: "/ipp/to_pdf"
+    dnssd: true

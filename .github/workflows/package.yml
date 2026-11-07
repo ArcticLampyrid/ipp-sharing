@@ -1,0 +1,84 @@
+name: Package Windows
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Package ${{ matrix.arch }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86
+            target: i686-pc-windows-msvc
+            bonjour_url: https://swcdn.apple.com/content/downloads/60/23/071-03199/w4nwlm92l77tb7w5hl3km1t1dftl1sr0ma/Bonjour.msi
+            bonjour_sha256: 7D7B2986D4FD35CC98AF3607B1A5E2E004D6AB1116A4A9DB37A66C17B63B6397
+          - arch: x64
+            target: x86_64-pc-windows-msvc
+            bonjour_url: https://swcdn.apple.com/content/downloads/52/06/071-03198/djcqm50b49h4o03eetqwowrdpf4o9sx71z/Bonjour64.msi
+            bonjour_sha256: 46E31E284DA64D6C2D366352B8A8ABCF7DB28D3E2A870D8FCF15C4A6FE0A6DD1
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: package-${{ matrix.target }}
+
+      - name: Build release binaries
+        run: cargo build --locked --release --target ${{ matrix.target }} -p ipp-sharing -p ipp-sharing-gui
+
+      - name: Install 7-Zip
+        shell: pwsh
+        run: |
+          if ($null -eq (Get-Command 7z.exe -ErrorAction SilentlyContinue)) {
+            choco install 7zip -y --no-progress
+          }
+
+      - name: Download the matching Bonjour installer
+        shell: pwsh
+        env:
+          BONJOUR_URL: ${{ matrix.bonjour_url }}
+          BONJOUR_SHA256: ${{ matrix.bonjour_sha256 }}
+        run: |
+          New-Item -ItemType Directory -Force -Path "$env:RUNNER_TEMP\ipp-sharing" | Out-Null
+          $bonjour = "$env:RUNNER_TEMP\ipp-sharing\Bonjour.msi"
+          Invoke-WebRequest -Uri $env:BONJOUR_URL -OutFile $bonjour
+          $actual = (Get-FileHash $bonjour -Algorithm SHA256).Hash
+          if ($actual -ne $env:BONJOUR_SHA256) {
+            throw "Bonjour SHA256 mismatch. Expected $env:BONJOUR_SHA256, got $actual."
+          }
+
+      - name: Assemble portable package
+        shell: pwsh
+        run: >
+          ./scripts/package.ps1
+          -Target ${{ matrix.target }}
+          -Architecture ${{ matrix.arch }}
+          -BonjourPath "$env:RUNNER_TEMP\ipp-sharing\Bonjour.msi"
+          -OutputDirectory "$env:GITHUB_WORKSPACE\artifacts"
+
+      - name: Upload ${{ matrix.arch }} package artifact
+        uses: actions/upload-artifact@v7
+        with:
+          path: artifacts/ipp-sharing-windows-${{ matrix.arch }}-*.7z
+          if-no-files-found: error
+          archive: false

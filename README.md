@@ -11,10 +11,27 @@ This is a Windows-only tool, of course. For Linux and macOS users, CUPS (Common 
 - **DNS-SD (Bonjour) Support**: Enables automatic service discovery for printers.
 
 ## Getting Started
+
+### Portable Windows packages
+
+The **Package Windows** GitHub Actions workflow produces separate `x86` and
+`x64` portable 7z packages as workflow artifacts. Each package contains the
+CLI, GUI, `pdfium.dll`, a matching Bonjour MSI, and a short setup guide. The
+Bonjour MSI is provided for manual installation; it is not installed by IPP
+Sharing.
+
 ### Prerequisites
 Before using IPP Sharing, ensure the following requirements are met:
 - **Operating System**: Windows 10 or later (required for Rust compatibility).
-- **Apple Bonjour**: Install Bonjour for service discovery. It is bundled with [iTunes](https://support.apple.com/en-us/HT210384) or [Bonjour Print Services](https://developer.apple.com/bonjour/). Alternatively, download it from [my Shared Files](https://files.alampy.com/Tools%C2%B7%E5%B7%A5%E5%85%B7/Bonjour).
+- **Apple Bonjour**: Install Bonjour for service discovery with WinGet:
+
+  ```powershell
+  winget install --id Apple.Bonjour -e
+  ```
+
+  Alternatively, download a portable package from the **Package Windows**
+  workflow artifacts and manually install the matching `Bonjour.msi` included
+  in the package.
 
 ### Step 1: Generate a Self-Signed Certificate
 To enable TLS encryption, generate a self-signed certificate using `openssl`. Here’s an example command:
