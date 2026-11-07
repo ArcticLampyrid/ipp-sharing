@@ -11,10 +11,14 @@ use ipp_sharing_core::config::read_config;
 use ipp_sharing_core::ipp_sharing;
 use log::{error, info};
 use std::env;
+use std::ffi::OsStr;
+use std::os::windows::ffi::OsStrExt;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
+use windows::core::PCWSTR;
+use windows::Win32::UI::WindowsAndMessaging::{MessageBoxW, MB_ICONERROR, MB_OK};
 
 #[derive(Parser, Clone)]
 #[command(version, about, long_about = None)]
@@ -97,9 +101,38 @@ fn main() {
             Ok(Box::new(MyApp::new(collector)))
         }),
     )
-    .unwrap();
+    .unwrap_or_else(|error| {
+        show_error(
+            "IPP Sharing",
+            &format!(
+                "Failed to start the WGPU renderer.\n\n\
+                 Try another backend with WGPU_BACKEND=dx12, WGPU_BACKEND=vulkan, \
+                 or WGPU_BACKEND=gl.\n\n{error:#}"
+            ),
+        )
+    });
 
     runtime.shutdown_timeout(Duration::from_secs(1));
+}
+
+fn show_error(title: &str, message: &str) {
+    let title = OsStr::new(title)
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect::<Vec<_>>();
+    let message = OsStr::new(message)
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect::<Vec<_>>();
+
+    unsafe {
+        MessageBoxW(
+            None,
+            PCWSTR(message.as_ptr()),
+            PCWSTR(title.as_ptr()),
+            MB_OK | MB_ICONERROR,
+        );
+    }
 }
 
 fn setup_fonts(ctx: &egui::Context) {
@@ -142,7 +175,7 @@ impl MyApp {
 impl eframe::App for MyApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         ui.request_repaint_after(Duration::from_secs(1));
-        egui::CentralPanel::default().show_inside(ui, |ui| {
+        egui::CentralPanel::default().show(ui, |ui| {
             let app_rect = ui.max_rect();
             let heading_rect = {
                 let mut rect = app_rect;
