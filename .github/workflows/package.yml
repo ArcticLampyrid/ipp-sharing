@@ -79,7 +79,6 @@ jobs:
       - name: Upload ${{ matrix.arch }} package artifact
         uses: actions/upload-artifact@v7
         with:
-          name: ipp-sharing-windows-${{ matrix.arch }}
           path: artifacts/ipp-sharing-windows-${{ matrix.arch }}-*.7z
           if-no-files-found: error
-          compression-level: 0
+          archive: false
